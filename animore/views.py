@@ -8,10 +8,12 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny, IsAdminUser, IsAuthenticated
 from django.utils.http import urlsafe_base64_decode, urlsafe_base64_encode
 from django.utils.encoding import force_str, force_bytes
-from django.conf import settings
-from django.core.mail import EmailMessage
+from django.conf import settings 
+from django.core.mail import EmailMessage, send_mail
 from django.template.loader import render_to_string
 from django.shortcuts import render
+from django.urls import reverse
+
 
 import jwt
 import traceback
@@ -24,12 +26,38 @@ class SignupView(CreateAPIView):
     serializer_class = UserSerializer
     permission_classes = [AllowAny]
 
+    def send_activation_email(self, user, request):
+        # uid와 token 생성
+        uid = urlsafe_base64_encode(force_bytes(user.pk))
+        token = jwt.encode({'user_id': user.pk}, settings.SECRET_KEY, algorithm='HS256')
+        print("Generated JWT token:", token)
+        # domain 가져오기
+        domain = request.get_host() 
+        # 계정 활성화 링크 생성
+        activation_link = f"http://{domain}{reverse('activate', kwargs={'uid': uid, 'token': token})}"
+
+        # 이메일 템플릿 렌더링
+        message = render_to_string('animore/user_activate_email.html', {
+            'user': user,
+            'activation_link': activation_link,
+        })
+        
+        # 이메일 발송
+        send_mail(
+            'Activate your account',
+            message,
+            'tmxjel0823@gmail.com',  # 발신자 이메일 주소
+            [user.email],        # 수신자 이메일 주소
+            fail_silently=False,
+        )
+
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         user = serializer.save()
 
         # 여기서 이메일 전송 로직을 추가할 수 있습니다.
+        self.send_activation_email(user, request)
 
         # 성공적으로 가입한 후, 템플릿을 렌더링하여 보여줍니다.
         return render(request, 'animore/user_activate_email.html', {'user': user})

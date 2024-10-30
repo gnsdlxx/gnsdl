@@ -1,7 +1,7 @@
 <html>
 <body>
-    <p>안녕하세요, {{ user.username }}님!</p>
+    <p>안녕하세요, {{ user.nickname }}님!</p>
     <p>다음 링크를 클릭하여 계정을 활성화하세요:</p>
-    <a href="{{ domain }}/auth/activate/{{ uid }}/{{ token }}">계정 활성화하기</a>
+    <a href="{{ activation_link }}">계정 활성화하기</a>
 </body>
 </html>
